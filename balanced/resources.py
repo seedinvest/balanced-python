@@ -1101,7 +1101,7 @@ class BankAccount(Resource):
                                   resides_under_marketplace=False)
 
     @requires_participant
-    def debit(self, amount, appears_on_statement_as=None,
+    def debit(self, amount, appears_on_statement_as=None, on_behalf_of=None,
               meta=None, description=None):
         """
         Creates a Debit of funds from this BankAccount to your Marketplace's
@@ -1113,6 +1113,23 @@ class BankAccount(Resource):
         """
         if not amount or amount <= 0:
             raise ResourceError('Must have an amount')
+
+        if on_behalf_of:
+
+            if hasattr(on_behalf_of, 'uri'):
+                on_behalf_of = on_behalf_of.uri
+
+            if not isinstance(on_behalf_of, basestring):
+                raise ValueError(
+                    'The on_behalf_of parameter should to be a customer uri'
+                )
+
+            if on_behalf_of == self.customer.uri:
+                raise ValueError(
+                    'The on_behalf_of parameter MAY NOT be the same customer'
+                    ' as the account you are debiting!'
+                )
+
         meta = meta or {}
         participant = getattr(self, 'account', None) or self.customer
         return Debit(
@@ -1122,6 +1139,7 @@ class BankAccount(Resource):
             meta=meta,
             description=description,
             source_uri=self.uri,
+            on_behalf_of_uri=on_behalf_of,
         ).save()
 
     def credit(self, amount, description=None, meta=None):
